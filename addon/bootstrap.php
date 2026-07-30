@@ -1,26 +1,10 @@
 <?php
 declare(strict_types=1);
-
-include('addons.class.php');
-session_name('mka');
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
-if (empty($_SESSION['MKA_Logado'])) {
-    http_response_code(403);
-    exit('Acesso negado. Faça login novamente no MK-AUTH.');
-}
-
-require_once('/opt/mk-auth/include/conexao.php');
-if (!isset($LOADMYSQL) || !($LOADMYSQL instanceof mysqli)) {
-    http_response_code(500);
-    exit('Banco do MK-AUTH indisponível.');
-}
-
-$db = $LOADMYSQL;
-$configFile = '/etc/mkauth-huawei-online/config.php';
-if (!is_file($configFile)) {
-    http_response_code(500);
-    exit('Configuração do Huawei Online não encontrada.');
-}
-$huaweiConfig = require $configFile;
+require_once __DIR__ . '/addons.class.php';
+if (session_status() !== PHP_SESSION_ACTIVE) { session_name('mka'); session_start(); }
+$authenticatedUser=trim((string)($_SESSION['MKA_Usuario']??$_SESSION['MM_Usuario']??''));
+if(empty($_SESSION['MKA_Logado'])&&$authenticatedUser===''){http_response_code(403);exit('Acesso negado. Entre novamente no MK-AUTH.');}
+function db():mysqli{$db=new mysqli('127.0.0.1','root','vertrigo','mkradius');if($db->connect_errno)throw new RuntimeException('Falha no banco.');$db->set_charset('utf8mb4');return $db;}
+function addon_config():array{$f='/etc/mkauth-huawei-online/config.php';return is_file($f)?require $f:[];}
+function json_response(array $d,int $s=200):void{http_response_code($s);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($d,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
+function valid_login(string $l):string{$l=trim($l);if($l===''||strlen($l)>64||!preg_match('/^[A-Za-z0-9_.@:-]+$/',$l))throw new InvalidArgumentException('Login inválido.');return $l;}
