@@ -47,7 +47,8 @@ PHP
 fi
 
 chown -R root:www-data "$DEST" "$CONF" "$CACHE"
-chmod 750 "$DEST" "$CONF" "$CACHE"
+chmod 750 "$DEST" "$CONF"
+chmod 770 "$CACHE"
 chmod 640 "$DEST"/* "${CONF}/config.php"
 
 echo
