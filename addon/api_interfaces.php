@@ -16,8 +16,8 @@ function snmpWalkNumeric(string $host, string $community, string $oid): array
     proc_close($proc);
     $values = [];
     foreach (preg_split('/\R/',trim((string)$stdout)) as $line) {
-        if (!preg_match('/\.([0-9]+)\s+=\s+(?:STRING:\s+"(.*)"|Counter64:\s+([0-9]+)|INTEGER:\s+([0-9]+))$/',$line,$m)) continue;
-        $values[(int)$m[1]] = $m[2] !== '' ? $m[2] : (int)($m[3] !== '' ? $m[3] : $m[4]);
+        if (!preg_match('/\.([0-9]+)\s+=\s+(?:STRING:\s+"(.*)"|Counter64:\s+([0-9]+)|INTEGER:\s+(?:[^(]+\()?([0-9]+)\)?)$/',$line,$m)) continue;
+        $values[(int)$m[1]] = ($m[2] ?? '') !== '' ? $m[2] : (int)(($m[3] ?? '') !== '' ? $m[3] : $m[4]);
     }
     return $values;
 }
