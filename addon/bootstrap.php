@@ -8,3 +8,5 @@ function db():mysqli{$db=new mysqli('127.0.0.1','root','vertrigo','mkradius');if
 function addon_config():array{$f='/etc/mkauth-huawei-online/config.php';return is_file($f)?require $f:[];}
 function json_response(array $d,int $s=200):void{http_response_code($s);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($d,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
 function valid_login(string $l):string{$l=trim($l);if($l===''||strlen($l)>64||!preg_match('/^[A-Za-z0-9_.@:-]+$/',$l))throw new InvalidArgumentException('Login inválido.');return $l;}
+function csrf_token():string{if(empty($_SESSION['huawei_csrf']))$_SESSION['huawei_csrf']=bin2hex(random_bytes(32));return(string)$_SESSION['huawei_csrf'];}
+function require_csrf(string $token):void{if(!hash_equals(csrf_token(),$token))throw new RuntimeException('Sessão expirada. Atualize a página.');}
