@@ -10,6 +10,7 @@ Addon isolado para Huawei NetEngine 8000. Não altera dashboard, topo, menu ou a
 - gráfico individual em tempo real usando os contadores da sessão no NE8000;
 - SNMP somente quando o botão **Testar SNMP** é acionado;
 - botão **Radius LOG**;
+- sincronização automática dos planos MK-AUTH com os atributos Huawei;
 - patch idempotente de capitalização do MAC para Huawei e MikroTik;
 - backup dos triggers e MACs antes de instalar o patch.
 
@@ -34,6 +35,31 @@ http://IP-DO-MKAUTH/admin/addons/huawei_online/
 ```
 
 Os segredos ficam em `/etc/mkauth-huawei-online/config.php`, fora da pasta pública.
+
+## Patch de planos Huawei
+
+O instalador cria `/root/planos` com os três scripts do pacote original e registra um
+único agendamento seguro em `/etc/cron.d/mkauth-huawei-planos`:
+
+```cron
+*/1 * * * * root /root/planos/att-planos-huawei.sh
+```
+
+A cada minuto, a velocidade de `sis_plano.velup` e `sis_plano.veldown` é convertida
+para bps e sincronizada nos atributos:
+
+- `Huawei-Input-Average-Rate`
+- `Huawei-Output-Average-Rate`
+
+A sincronização usa `groupname + attribute`, não define IDs manualmente, não cria
+novas duplicatas e não remove ou modifica atributos MikroTik. Os três agendamentos
+antigos são removidos porque `planos.sh` é apenas uma consulta e `att-planos.sh` é
+mantido somente para compatibilidade. Antes da primeira sincronização, o instalador
+salva um backup dos atributos Huawei em `/root/planos`. Para sincronizar manualmente:
+
+```bash
+/root/planos/att-planos-huawei.sh
+```
 
 ## RADIUS Huawei
 
