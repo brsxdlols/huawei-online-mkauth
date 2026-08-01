@@ -58,6 +58,13 @@ usuário e senha sem reinstalar. Na primeira abertura, o assistente é exibido
 automaticamente se algum dado obrigatório estiver ausente. O botão **Testar
 conectividade** verifica RADIUS, SNMP, porta SSH, autenticação e permissão do comando.
 
+O botão **Wizard** oferece inventário somente leitura, geração manual dos comandos
+e configuração automática confirmada. No modo automático ele cria uma community
+SNMPv2c somente leitura vinculada à ACL `MKAUTH-SNMP`, permitindo exclusivamente o
+IP de origem detectado para o MK-AUTH. O Wizard nunca tenta revelar communities
+cifradas existentes e exige que o administrador digite `APLICAR` antes de modificar
+o Huawei. Ao final, mostra os comandos utilizados e o resultado do teste SNMP.
+
 ## Patch de planos Huawei
 
 O instalador cria `/root/planos` com os três scripts do pacote original e registra um
