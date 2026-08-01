@@ -21,7 +21,7 @@ install -d -o root -g www-data -m 0750 "$DEST"
 install -d -o root -g www-data -m 0770 "$CONF"
 install -d -o root -g www-data -m 0770 "$CACHE"
 install -d -o root -g root -m 0700 "$PLANOS"
-files=(index.php detail.php bootstrap.php huawei_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_ssh_health.php api_config.php api_disconnect.php manifest.json)
+files=(index.php detail.php bootstrap.php huawei_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_ssh_health.php api_config.php api_wizard.php api_disconnect.php manifest.json)
 for f in "${files[@]}"; do curl -fsSL "$REPO/addon/$f" -o "$DEST/$f"; done
 for f in att-planos-huawei.sh att-planos.sh planos.sh; do
   curl -fsSL "$REPO/planos/$f" -o "$PLANOS/$f"
