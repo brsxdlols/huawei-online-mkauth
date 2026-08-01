@@ -1,5 +1,34 @@
 <?php
 declare(strict_types=1);require __DIR__.'/bootstrap.php';
-function ssh_huawei(array $c,string $command):string{foreach(['ssh_host','ssh_port','ssh_user','ssh_password']as$k)if(empty($c[$k]))throw new RuntimeException('SSH do Huawei não configurado.');$cmd='SSHPASS='.escapeshellarg((string)$c['ssh_password']).' /usr/bin/timeout 8 /usr/bin/sshpass -e /usr/bin/ssh -tt -o StrictHostKeyChecking=accept-new -o ConnectTimeout=4 -o LogLevel=ERROR -p '.(int)$c['ssh_port'].' -l '.escapeshellarg((string)$c['ssh_user']).' '.escapeshellarg((string)$c['ssh_host']).' 2>&1';$p=proc_open($cmd,[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);if(!is_resource($p))throw new RuntimeException('Falha ao iniciar SSH.');fwrite($pipes[0],"screen-length 0 temporary\n$command\nquit\n");fclose($pipes[0]);$o=stream_get_contents($pipes[1]);fclose($pipes[1]);$o.=stream_get_contents($pipes[2]);fclose($pipes[2]);proc_close($p);return $o;}
+
+function ssh_huawei(array $c,string $command):string{
+    foreach(['ssh_host','ssh_port','ssh_user','ssh_password']as$k)if(empty($c[$k]))throw new RuntimeException('SSH do Huawei não configurado.');
+    $cmd='SSHPASS='.escapeshellarg((string)$c['ssh_password']).' /usr/bin/timeout 10 /usr/bin/sshpass -e /usr/bin/ssh -tt -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -o StrictHostKeyChecking=accept-new -o ConnectTimeout=4 -o LogLevel=ERROR -p '.(int)$c['ssh_port'].' -l '.escapeshellarg((string)$c['ssh_user']).' '.escapeshellarg((string)$c['ssh_host']).' 2>&1';
+    $p=proc_open($cmd,[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);if(!is_resource($p))throw new RuntimeException('Falha ao iniciar SSH.');
+    fwrite($pipes[0],"screen-length 0 temporary\n$command\nquit\n");fclose($pipes[0]);
+    $o=stream_get_contents($pipes[1]);fclose($pipes[1]);$o.=stream_get_contents($pipes[2]);fclose($pipes[2]);$code=proc_close($p);
+    if($code!==0||preg_match('/locked|blocked|access denied|authentication failed|connection reset|timed out/i',$o)){
+        if(stripos($o,'locked')!==false||stripos($o,'blocked')!==false)throw new RuntimeException('Acesso SSH temporariamente bloqueado no Huawei. Aguarde o desbloqueio.');
+        throw new RuntimeException('Falha na comunicação SSH com o Huawei. Verifique IP, porta e credenciais.');
+    }
+    return $o;
+}
 function value_of(string $o,string $l):?string{return preg_match('/^\s*'.preg_quote($l,'/').'\s*:\s*(.+?)\s*$/mi',$o,$m)?trim($m[1]):null;}
-try{$login=valid_login((string)($_GET['login']??''));$c=addon_config();$f='/var/cache/mkauth-huawei-online/userid-'.hash('sha256',strtolower($login));$id=is_file($f)?trim((string)file_get_contents($f)):'';if(!preg_match('/^\d+$/',$id)){$o=ssh_huawei($c,'display access-user username '.$login);if(!preg_match('/^\s*(\d+)\s+'.preg_quote($login,'/').'\s+/mi',$o,$m))json_response(['ok'=>false,'error'=>'Sessão não localizada no Huawei.'],404);$id=$m[1];@file_put_contents($f,$id,LOCK_EX);}$o=ssh_huawei($c,'display access-user user-id '.$id);if(stripos($o,'User access index')===false){@unlink($f);json_response(['ok'=>false,'error'=>'Sessão mudou; tente novamente.'],409);}$counter=static function(?string$v):int{if(!$v||!preg_match('/\((\d+),(\d+)\)/',$v,$m))return 0;return(int)$m[1]*4294967296+(int)$m[2];};json_response(['ok'=>true,'sample_ms'=>(int)round(microtime(true)*1000),'user_id'=>(int)$id,'up_bytes'=>$counter(value_of($o,'Up bytes number(high,low)')),'down_bytes'=>$counter(value_of($o,'Down bytes number(high,low)')),'interface'=>value_of($o,'User access interface'),'online_time'=>value_of($o,'Online time (h:min:sec)')]);}catch(Throwable $e){json_response(['ok'=>false,'error'=>$e->getMessage()],500);}
+
+try{
+    $login=valid_login((string)($_GET['login']??''));$c=addon_config();$cache='/var/cache/mkauth-huawei-online';$failFile=$cache.'/ssh-failure';
+    if(is_file($failFile)&&time()-(int)filemtime($failFile)<60)throw new RuntimeException('SSH do Huawei em pausa de segurança. Nova tentativa em até 60 segundos.');
+    $f=$cache.'/userid-'.hash('sha256',strtolower($login));$id=is_file($f)?trim((string)file_get_contents($f)):'';
+    try{
+        if(!preg_match('/^\d+$/',$id)){
+            $o=ssh_huawei($c,'display access-user username '.$login);
+            if(!preg_match('/(?:^|\R)\s*(\d+)\s+'.preg_quote($login,'/').'(?:\s+|\R)/i',$o,$m))json_response(['ok'=>false,'error'=>'Sessão não localizada no Huawei.'],404);
+            $id=$m[1];@file_put_contents($f,$id,LOCK_EX);
+        }
+        $o=ssh_huawei($c,'display access-user user-id '.$id);
+        @unlink($failFile);
+    }catch(Throwable $sshError){@touch($failFile);throw $sshError;}
+    if(stripos($o,'User access index')===false){@unlink($f);json_response(['ok'=>false,'error'=>'A sessão mudou. Abra o monitoramento novamente.'],409);}
+    $counter=static function(?string$v):int{if(!$v||!preg_match('/\((\d+),(\d+)\)/',$v,$m))return 0;return(int)$m[1]*4294967296+(int)$m[2];};
+    json_response(['ok'=>true,'sample_ms'=>(int)round(microtime(true)*1000),'user_id'=>(int)$id,'up_bytes'=>$counter(value_of($o,'Up bytes number(high,low)')),'down_bytes'=>$counter(value_of($o,'Down bytes number(high,low)')),'interface'=>value_of($o,'User access interface'),'online_time'=>value_of($o,'Online time (h:min:sec)')]);
+}catch(Throwable $e){json_response(['ok'=>false,'error'=>$e->getMessage()],503);}

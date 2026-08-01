@@ -9,6 +9,7 @@ Addon isolado para Huawei NetEngine 8000. Não altera dashboard, topo, menu ou a
 - cadastro, alteração e histórico de conexões do cliente;
 - gráfico individual em tempo real usando os contadores da sessão no NE8000;
 - SNMP somente quando o botão **Testar SNMP** é acionado;
+- teste de porta, autenticação e permissão pelo botão **Testar SSH**;
 - botão **Radius LOG**;
 - sincronização automática dos planos MK-AUTH com os atributos Huawei;
 - patch idempotente de capitalização do MAC para Huawei e MikroTik;
@@ -35,6 +36,27 @@ http://IP-DO-MKAUTH/admin/addons/huawei_online/
 ```
 
 Os segredos ficam em `/etc/mkauth-huawei-online/config.php`, fora da pasta pública.
+
+### Por que o SSH é necessário?
+
+O RADIUS informa sessões e contadores acumulados. O SNMP padrão monitora interfaces,
+mas não identifica com segurança o tráfego de cada login PPPoE. Para o gráfico em
+tempo real, o addon consulta sob demanda os contadores da sessão com
+`display access-user` no Huawei.
+
+Use preferencialmente um usuário SSH exclusivo para o addon, com permissão somente
+de leitura para os comandos `screen-length` e `display access-user`. Se o botão
+**Desconectar** for habilitado, o usuário também precisa executar `cut access-user`,
+que é um comando de nível de gerenciamento. Restrinja o SSH ao IP do MK-AUTH por
+ACL/política do equipamento. Configure o IP
+interno de gerência do Huawei e a porta SSH interna; evite usar redirecionamento do
+IP público a partir do próprio MK-AUTH. O usuário, host e porta são informados nas
+variáveis `HUAWEI_SSH_USER`, `HUAWEI_SSH_HOST` e `HUAWEI_SSH_PORT` durante a instalação.
+
+Após instalar, a engrenagem **Configurações** permite alterar IP, SNMP, porta SSH,
+usuário e senha sem reinstalar. Na primeira abertura, o assistente é exibido
+automaticamente se algum dado obrigatório estiver ausente. O botão **Testar
+conectividade** verifica RADIUS, SNMP, porta SSH, autenticação e permissão do comando.
 
 ## Patch de planos Huawei
 
