@@ -6,7 +6,9 @@ function huawei_exec(array $c,string $commands):string{
     $p=proc_open($cmd,[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);if(!is_resource($p))throw new RuntimeException('Falha ao iniciar SSH.');
     fwrite($pipes[0],"screen-length 0 temporary\n".$commands."\nquit\n");fclose($pipes[0]);$out=stream_get_contents($pipes[1]);fclose($pipes[1]);$out.=stream_get_contents($pipes[2]);fclose($pipes[2]);$code=proc_close($p);
     if(stripos($out,'locked')!==false||stripos($out,'blocked')!==false)throw new RuntimeException('Usuário ou IP bloqueado temporariamente pelo Huawei.');
-    if($code!==0||preg_match('/access denied|authentication failed|connection reset|timed out/i',$out))throw new RuntimeException('Falha na autenticação ou comunicação SSH.');
+    if(preg_match('/access denied|authentication failed|configured password was not accepted|permission denied/i',$out))throw new RuntimeException('Usuário ou senha SSH recusados. No domínio Huawei use, por exemplo, usuario>default_admin.');
+    if(preg_match('/connection refused|no route to host|connection timed out|could not resolve/i',$out))throw new RuntimeException('IP ou porta SSH inacessível a partir do MK-AUTH.');
+    $executed=preg_match('/<[^>]+>/', $out)===1;if($code!==0&&!$executed)throw new RuntimeException('Falha na comunicação SSH com o Huawei.');
     return $out;
 }
 function huawei_value(string $out,string $label):?string{return preg_match('/^\s*'.preg_quote($label,'/').'\s*:\s*(.+?)\s*$/mi',$out,$m)?trim($m[1]):null;}
