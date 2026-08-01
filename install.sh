@@ -18,11 +18,20 @@ fi
 : "${HUAWEI_SSH_PASSWORD:?Informe HUAWEI_SSH_PASSWORD}"
 : "${HUAWEI_NAS_IP:=10.255.255.200}"
 install -d -o root -g www-data -m 0750 "$DEST"
+install -d -o root -g www-data -m 0770 "$DEST/data"
 install -d -o root -g www-data -m 0770 "$CONF"
 install -d -o root -g www-data -m 0770 "$CACHE"
 install -d -o root -g root -m 0700 "$PLANOS"
 files=(index.php detail.php bootstrap.php huawei_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_ssh_health.php api_config.php api_wizard.php api_disconnect.php manifest.json)
 for f in "${files[@]}"; do curl -fsSL "$REPO/addon/$f" -o "$DEST/$f"; done
+cat >"$DEST/data/.htaccess" <<'HTACCESS'
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Deny from all
+</IfModule>
+HTACCESS
 for f in att-planos-huawei.sh att-planos.sh planos.sh; do
   curl -fsSL "$REPO/planos/$f" -o "$PLANOS/$f"
 done
@@ -48,7 +57,7 @@ user=root
 password=vertrigo
 CNF
 chmod 0600 "$CONF/db.cnf"
-chown -R root:www-data "$DEST" "$CONF"; find "$DEST" -type f -exec chmod 0640 {} \;; chmod 0660 "$CONF/config.php"
+chown -R root:www-data "$DEST" "$CONF"; find "$DEST" -type f -exec chmod 0640 {} \;; chmod 0770 "$DEST/data"; chmod 0660 "$CONF/config.php"
 curl -fsSL "$REPO/install-mac-case-patch.sh" -o /root/install-mac-case-patch.sh
 chmod 0700 /root/install-mac-case-patch.sh
 /root/install-mac-case-patch.sh
