@@ -11,12 +11,12 @@ if ! command -v snmpget >/dev/null || ! command -v sshpass >/dev/null || ! comma
   apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y snmp sshpass openssh-client
 fi
-: "${HUAWEI_SNMP_COMMUNITY:?Informe HUAWEI_SNMP_COMMUNITY}"
-: "${HUAWEI_SSH_HOST:?Informe HUAWEI_SSH_HOST}"
+: "${HUAWEI_SNMP_COMMUNITY:=}"
+: "${HUAWEI_SSH_HOST:=}"
 : "${HUAWEI_SSH_PORT:=22}"
-: "${HUAWEI_SSH_USER:?Informe HUAWEI_SSH_USER}"
-: "${HUAWEI_SSH_PASSWORD:?Informe HUAWEI_SSH_PASSWORD}"
-: "${HUAWEI_NAS_IP:=10.255.255.200}"
+: "${HUAWEI_SSH_USER:=}"
+: "${HUAWEI_SSH_PASSWORD:=}"
+: "${HUAWEI_NAS_IP:=}"
 : "${HUAWEI_SNMP_HOST:=$HUAWEI_NAS_IP}"
 install -d -o root -g www-data -m 0750 "$DEST"
 install -d -o root -g www-data -m 0770 "$DEST/data" "$CONF" "$CACHE"
@@ -72,4 +72,5 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON
 chmod 0644 /etc/cron.d/mkauth-huawei-patch-worker
 rm -f /etc/sudoers.d/mkauth-huawei-patch-manager
-echo "Addon instalado sem aplicar patches no banco. Abra http://IP-DO-MKAUTH/admin/addons/huawei_online/ e use Analisar PATCH."
+echo "Addon instalado sem credenciais e sem aplicar patches no banco."
+echo "Abra http://IP-DO-MKAUTH/admin/addons/huawei_online/, execute o WIZARD e depois use Analisar PATCH."

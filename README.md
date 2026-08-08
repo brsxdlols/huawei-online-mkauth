@@ -17,17 +17,14 @@ Addon isolado para Huawei NetEngine 8000. Não altera dashboard, topo, menu ou a
 
 ## Instalação
 
-Execute como `root`, substituindo os valores:
+Execute como `root`:
 
 ```bash
-export HUAWEI_NAS_IP='10.255.255.200'
-export HUAWEI_SNMP_COMMUNITY='SUA_COMUNIDADE'
-export HUAWEI_SSH_HOST='IP_DO_HUAWEI'
-export HUAWEI_SSH_PORT='22'
-export HUAWEI_SSH_USER='USUARIO_SSH'
-export HUAWEI_SSH_PASSWORD='SENHA_SSH'
 curl -fsSL https://raw.githubusercontent.com/brsxdlols/huawei-online-mkauth/main/install.sh | bash
 ```
+
+O instalador não exige credenciais na linha de comando. Depois da instalação, abra
+`/admin/addons/huawei_online/` e use o **WIZARD** para cadastrar o IP/NAS, SNMP e SSH.
 
 Abra:
 
