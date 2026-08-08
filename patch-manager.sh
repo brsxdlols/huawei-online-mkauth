@@ -50,4 +50,18 @@ ROTATE
   status
 }
 
-case "${1:-}" in status) status;; apply) apply;; *) echo 'Uso: patch-manager.sh status|apply' >&2; exit 2;; esac
+process(){
+  local id log_file
+  id="$(sql "SELECT id FROM addon_huawei_patch_jobs WHERE status='pending' ORDER BY id LIMIT 1;")"
+  [ -n "$id" ] || exit 0
+  sql "UPDATE addon_huawei_patch_jobs SET status='running',message='Aplicação iniciada pelo executor root' WHERE id=$id AND status='pending';"
+  log_file="/var/log/mkauth-huawei-patch-job-$id.log"
+  if apply >"$log_file" 2>&1; then
+    sql "UPDATE addon_huawei_patch_jobs SET status='success',finished_at=NOW(),message='Patch aplicado e validado com sucesso' WHERE id=$id;"
+  else
+    sql "UPDATE addon_huawei_patch_jobs SET status='error',finished_at=NOW(),message='Falha na aplicação; consulte $log_file' WHERE id=$id;"
+    return 1
+  fi
+}
+
+case "${1:-}" in status) status;; apply) apply;; process) process;; *) echo 'Uso: patch-manager.sh status|apply|process' >&2; exit 2;; esac

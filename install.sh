@@ -7,9 +7,9 @@ CACHE="/var/cache/mkauth-huawei-online"
 PLANOS="/root/planos"
 [ "$(id -u)" -eq 0 ] || { echo "Execute como root."; exit 1; }
 for cmd in curl mysql; do command -v "$cmd" >/dev/null || { echo "Falta o comando: $cmd"; exit 1; }; done
-if ! command -v snmpget >/dev/null || ! command -v sshpass >/dev/null || ! command -v ssh >/dev/null || ! command -v sudo >/dev/null; then
+if ! command -v snmpget >/dev/null || ! command -v sshpass >/dev/null || ! command -v ssh >/dev/null; then
   apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y snmp sshpass openssh-client sudo
+  DEBIAN_FRONTEND=noninteractive apt-get install -y snmp sshpass openssh-client
 fi
 : "${HUAWEI_SNMP_COMMUNITY:?Informe HUAWEI_SNMP_COMMUNITY}"
 : "${HUAWEI_SSH_HOST:?Informe HUAWEI_SSH_HOST}"
@@ -64,10 +64,12 @@ chmod 0700 /root/install-mac-case-patch.sh
 curl -fsSL "$REPO/patch-manager.sh" -o /usr/local/sbin/mkauth-huawei-patch-manager
 chmod 0750 /usr/local/sbin/mkauth-huawei-patch-manager
 chown root:root /usr/local/sbin/mkauth-huawei-patch-manager
-cat >/etc/sudoers.d/mkauth-huawei-patch-manager <<'SUDOERS'
-www-data ALL=(root) NOPASSWD: /usr/local/sbin/mkauth-huawei-patch-manager status
-www-data ALL=(root) NOPASSWD: /usr/local/sbin/mkauth-huawei-patch-manager apply
-SUDOERS
-chmod 0440 /etc/sudoers.d/mkauth-huawei-patch-manager
-visudo -cf /etc/sudoers.d/mkauth-huawei-patch-manager >/dev/null
+mysql --defaults-extra-file="$CONF/db.cnf" mkradius -e "CREATE TABLE IF NOT EXISTS addon_huawei_patch_jobs(id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,status VARCHAR(16) NOT NULL,requested_by VARCHAR(100) NOT NULL,requested_at DATETIME NOT NULL,finished_at DATETIME NULL,message TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+cat >/etc/cron.d/mkauth-huawei-patch-worker <<'CRON'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * root /usr/local/sbin/mkauth-huawei-patch-manager process >/dev/null 2>&1
+CRON
+chmod 0644 /etc/cron.d/mkauth-huawei-patch-worker
+rm -f /etc/sudoers.d/mkauth-huawei-patch-manager
 echo "Addon instalado sem aplicar patches no banco. Abra http://IP-DO-MKAUTH/admin/addons/huawei_online/ e use Analisar PATCH."
