@@ -67,8 +67,13 @@ o Huawei. Ao final, mostra os comandos utilizados e o resultado do teste SNMP.
 
 ## Patch de planos Huawei
 
-O instalador cria `/root/planos` com os três scripts do pacote original e registra um
-único agendamento seguro em `/etc/cron.d/mkauth-huawei-planos`:
+O instalador apenas baixa os scripts para `/root/planos`; ele **não altera planos,
+MACs ou cron automaticamente**. Depois da instalação, use no addon:
+
+- **Analisar PATCH Planos/MAC**: somente leitura; verifica triggers, conflitos,
+  atributos ausentes/divergentes e o agendamento;
+- **Aplicar e ativar PATCH**: cria backup, instala os triggers de MAC, sincroniza
+  os atributos Huawei e registra o agendamento seguro:
 
 ```cron
 */1 * * * * root /root/planos/att-planos-huawei.sh
@@ -82,9 +87,10 @@ para bps e sincronizada nos atributos:
 
 A sincronização usa `groupname + attribute`, não define IDs manualmente, não cria
 novas duplicatas e não remove ou modifica atributos MikroTik. Os três agendamentos
-antigos são removidos porque `planos.sh` é apenas uma consulta e `att-planos.sh` é
-mantido somente para compatibilidade. Antes da primeira sincronização, o instalador
-salva um backup dos atributos Huawei em `/root/planos`. Para sincronizar manualmente:
+antigos não são necessários porque `planos.sh` é apenas uma consulta e
+`att-planos.sh` é mantido somente para compatibilidade. Antes da primeira aplicação
+pelo botão, o gerenciador salva um backup dos atributos Huawei em `/root/planos`.
+Para sincronizar manualmente depois de ativado:
 
 ```bash
 /root/planos/att-planos-huawei.sh
@@ -143,7 +149,9 @@ O SNMP/IF-MIB comum permanece disponível apenas para teste de comunicação, po
 
 ## Patch de MAC
 
-O instalador remove triggers antigos que forçam minúsculas e cria triggers que preservam o formato recebido no último accounting:
+Somente ao pressionar **Aplicar e ativar PATCH**, o gerenciador remove triggers
+antigos que forçam minúsculas e cria triggers que preservam o formato recebido no
+último accounting:
 
 - Huawei pode manter `aa:bb:cc:dd:ee:ff`;
 - MikroTik pode manter `AA:BB:CC:DD:EE:FF`.
