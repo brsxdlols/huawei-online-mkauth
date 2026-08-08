@@ -17,6 +17,7 @@ fi
 : "${HUAWEI_SSH_USER:?Informe HUAWEI_SSH_USER}"
 : "${HUAWEI_SSH_PASSWORD:?Informe HUAWEI_SSH_PASSWORD}"
 : "${HUAWEI_NAS_IP:=10.255.255.200}"
+: "${HUAWEI_SNMP_HOST:=$HUAWEI_NAS_IP}"
 install -d -o root -g www-data -m 0750 "$DEST"
 install -d -o root -g www-data -m 0770 "$DEST/data"
 install -d -o root -g www-data -m 0770 "$CONF"
@@ -42,7 +43,7 @@ b64(){ printf '%s' "$1" | base64 | tr -d '\r\n'; }
 cat >"$CONF/config.php" <<PHP
 <?php return [
 'nas_ip'=>base64_decode('$(b64 "$HUAWEI_NAS_IP")'),
-'snmp_host'=>base64_decode('$(b64 "$HUAWEI_NAS_IP")'),
+'snmp_host'=>base64_decode('$(b64 "$HUAWEI_SNMP_HOST")'),
 'snmp_community'=>base64_decode('$(b64 "$HUAWEI_SNMP_COMMUNITY")'),
 'ssh_host'=>base64_decode('$(b64 "$HUAWEI_SSH_HOST")'),
 'ssh_port'=>(int)base64_decode('$(b64 "$HUAWEI_SSH_PORT")'),
@@ -57,6 +58,7 @@ user=root
 password=vertrigo
 CNF
 chmod 0600 "$CONF/db.cnf"
+mysql --defaults-extra-file="$CONF/db.cnf" mkradius -e "CREATE TABLE IF NOT EXISTS addon_huawei_config (id TINYINT UNSIGNED NOT NULL PRIMARY KEY,config_json LONGTEXT NOT NULL,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 chown -R root:www-data "$DEST" "$CONF"; find "$DEST" -type f -exec chmod 0640 {} \;; chmod 0770 "$DEST/data"; chmod 0660 "$CONF/config.php"
 curl -fsSL "$REPO/install-mac-case-patch.sh" -o /root/install-mac-case-patch.sh
 chmod 0700 /root/install-mac-case-patch.sh
