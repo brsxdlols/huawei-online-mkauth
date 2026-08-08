@@ -43,3 +43,5 @@ WHERE NOT EXISTS (
 COMMIT;
 SQL
 
+touch /var/run/mkauth-huawei-planos.last
+
