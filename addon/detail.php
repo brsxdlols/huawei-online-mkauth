@@ -9,4 +9,11 @@ fetch('api_client.php?login='+encodeURIComponent(login)).then(r=>r.json()).then(
 function draw(){ctx.clearRect(0,0,1000,320);let max=Math.max(1,...points.flatMap(p=>[p.d,p.u]));for(const[k,color]of[['d','#e75252'],['u','#2679c9']]){ctx.strokeStyle=color;ctx.lineWidth=4;ctx.beginPath();points.forEach((p,i)=>{let x=25+i*950/Math.max(1,points.length-1),y=295-p[k]/max*270;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}}
 async function sample(){try{let r=await fetch('api_realtime.php?login='+encodeURIComponent(login)+'&_='+Date.now(),{cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'Falha na consulta ao Huawei.');if(prev){let s=(j.sample_ms-prev.sample_ms)/1000,d=Math.max(0,(j.down_bytes-prev.down_bytes)*8/s/1e6),u=Math.max(0,(j.up_bytes-prev.up_bytes)*8/s/1e6);down.textContent=d.toFixed(2);up.textContent=u.toFixed(2);points.push({d,u});if(points.length>30)points.shift();draw()}prev=j;statusEl.textContent=(j.interface||'Huawei')+' · '+(j.online_time||'')+' · atualizado '+new Date().toLocaleTimeString()}catch(e){statusEl.textContent='Monitoramento: '+e.message;clearInterval(timer)}}
 let timer=setInterval(sample,3000);sample();addEventListener('beforeunload',()=>clearInterval(timer));
+</script>
+<script>
+(function(){
+ fetch('api_client.php?login='+encodeURIComponent(login)+'&validate='+Date.now(),{cache:'no-store'})
+  .then(async r=>{let j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'Cliente não está online no Huawei.')})
+  .catch(e=>{if(timer)clearInterval(timer);document.querySelector('.layout').innerHTML='<main class="card" style="grid-column:1/-1;text-align:center"><h2>Cliente não conectado no Huawei</h2><p class="muted">'+esc(e.message)+'</p><p>Esta página mostra somente sessões cujo NAS-IP-Address corresponde ao Huawei configurado.</p><a class="btn" href="./">VOLTAR À LISTA</a></main>'});
+})();
 </script></body></html>
