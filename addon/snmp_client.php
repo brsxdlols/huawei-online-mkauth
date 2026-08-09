@@ -28,7 +28,7 @@ function snmp_args(array $c,string $binary,string $oid,bool $walk=false):array{
 function snmp_run(array $c,string $oid,bool $walk=false):array{
     $name=$walk?'snmpwalk':'snmpget';$binary=is_executable('/usr/bin/'.$name)?'/usr/bin/'.$name:'/usr/local/bin/'.$name;
     if(!is_executable($binary))throw new RuntimeException("Comando $name não instalado no MK-AUTH.");
-    $args=snmp_args($c,$binary,$oid,$walk);$spec=[1=>['pipe','w'],2=>['pipe','w']];$p=proc_open($args,$spec,$pipes);
+    $args=snmp_args($c,$binary,$oid,$walk);$command=implode(' ',array_map('escapeshellarg',$args));$spec=[1=>['pipe','w'],2=>['pipe','w']];$p=proc_open($command,$spec,$pipes);
     if(!is_resource($p))throw new RuntimeException('Não foi possível iniciar a consulta SNMP.');
     $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$code=proc_close($p);
     return['ok'=>$code===0,'output'=>trim((string)$out),'error'=>trim((string)$err),'version'=>(string)($c['snmp_version']??'2c')];

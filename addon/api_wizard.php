@@ -12,7 +12,7 @@ function wizard_inventory(array $c):array{
     $target=(string)($c['snmp_host']??$c['nas_ip']??$c['ssh_host']);$source=wizard_source_ip($target);
     $out=huawei_exec($c,"display version\ndisplay snmp-agent community\ndisplay snmp-agent usm-user\ndisplay current-configuration | include snmp-agent\ndisplay acl all");
     $communities=[];$blocks=preg_split('/(?=\s*Community name:)/i',$out)?:[];
-    foreach($blocks as $b){if(!preg_match('/Community name:\s*(\S+)/i',$b,$m))continue;$alias=preg_match('/Alias name:\s*(\S+)/i',$b,$a)?$a[1]:'sem alias';$acl=preg_match('/Acl:\s*(\d+)/i',$b,$x)?$x[1]:'';$communities[]=['alias'=>$alias,'acl'=>$acl,'encrypted'=>str_contains($m[1],'%^%#')];}
+    foreach($blocks as $b){if(!preg_match('/Community name:\s*(\S+)/i',$b,$m))continue;$alias=preg_match('/Alias name:\s*(\S+)/i',$b,$a)?$a[1]:'sem alias';$acl=preg_match('/Acl:\s*(\d+)/i',$b,$x)?$x[1]:'';$communities[]=['alias'=>$alias,'acl'=>$acl,'encrypted'=>strpos($m[1],'%^%#')!==false];}
     preg_match_all('/Basic ACL\s+(\d+),.*?(?=\n\s*Basic ACL|\z)/is',$out,$aclBlocks,PREG_SET_ORDER);$acls=[];
     foreach($aclBlocks as $ab){$number=$ab[1];$permit=(bool)preg_match('/rule\s+\d+\s+permit\s+source\s+'.preg_quote($source,'/').'\s+0(?:\s|\()/i',$ab[0]);$matches=0;if(preg_match('/rule\s+\d+\s+permit\s+source\s+'.preg_quote($source,'/').'\s+0\s*\((\d+)\s+times matched\)/i',$ab[0],$mm))$matches=(int)$mm[1];$acls[$number]=['number'=>$number,'source_permitted'=>$permit,'matches'=>$matches];}
     $v3=[];if(preg_match_all('/(?:User name|UserName)\s*:\s*(\S+)/i',$out,$users))$v3=array_values(array_unique($users[1]));
@@ -22,7 +22,7 @@ function wizard_inventory(array $c):array{
     $recommendations[]='Teste real: '.$snmp['message'];
     if(!$communities)$recommendations[]='Nenhuma community SNMP v2c foi identificada; crie uma community somente leitura.';
     foreach($communities as $community){$acl=$community['acl'];if($acl===''||!isset($acls[$acl]))$recommendations[]="A community {$community['alias']} não possui uma ACL verificável.";elseif(!$acls[$acl]['source_permitted'])$recommendations[]="A ACL {$acl}, usada pela community {$community['alias']}, não permite o IP {$source}.";}
-    if(!$snmp['ok'])$recommendations[]='Ação necessária: confirme a community salva no addon e a ACL associada.';if($snmp['ok']&&!array_filter($communities,fn($x)=>isset($acls[$x['acl']])&&!$acls[$x['acl']]['source_permitted']))$recommendations[]='Resultado final: SNMP liberado e funcionando para este MK-AUTH.';
+    if(!$snmp['ok'])$recommendations[]='Ação necessária: confirme a community salva no addon e a ACL associada.';if($snmp['ok']&&!array_filter($communities,function($x)use($acls){return isset($acls[$x['acl']])&&!$acls[$x['acl']]['source_permitted'];}))$recommendations[]='Resultado final: SNMP liberado e funcionando para este MK-AUTH.';
     return['ok'=>true,'source_ip'=>$source,'snmp_configured'=>!empty($communities),'acl_detected'=>!empty($acls),'communities'=>$communities,'acls'=>array_values($acls),'snmp_v3_users'=>$v3,'snmp_test'=>$snmp,'recommendations'=>$recommendations,'message'=>'Análise concluída com inventário de communities, ACLs e teste real SNMP.'];
 }
 
