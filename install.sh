@@ -21,7 +21,7 @@ fi
 install -d -o root -g www-data -m 0750 "$DEST"
 install -d -o root -g www-data -m 0770 "$DEST/data" "$CONF" "$CACHE"
 install -d -o root -g root -m 0700 "$PLANOS"
-files=(index.php detail.php bootstrap.php huawei_client.php snmp_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_interfaces.php api_ssh_health.php api_config.php api_wizard.php api_disconnect.php api_patch.php manifest.json)
+files=(index.php detail.php bootstrap.php huawei_client.php snmp_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_interfaces.php api_ssh_health.php api_config.php api_wizard.php api_disconnect.php api_patch.php api_snmp_template.php manifest.json)
 for f in "${files[@]}"; do curl -fsSL "$REPO/addon/$f" -o "$DEST/$f"; done
 cat >"$DEST/data/.htaccess" <<'HTACCESS'
 <IfModule mod_authz_core.c>
