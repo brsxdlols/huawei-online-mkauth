@@ -9,11 +9,17 @@ Addon isolado para Huawei NetEngine 8000. Não altera dashboard, topo, menu ou a
 - cadastro, alteração e histórico de conexões do cliente;
 - gráfico individual em tempo real usando os contadores da sessão no NE8000;
 - SNMP somente quando o botão **Testar SNMP** é acionado;
+- configuração de SNMP v1, v2c ou v3 (`noAuthNoPriv`, `authNoPriv` e `authPriv`);
 - teste de porta, autenticação e permissão pelo botão **Testar SSH**;
 - botão **Radius LOG**;
 - sincronização automática dos planos MK-AUTH com os atributos Huawei;
 - patch idempotente de capitalização do MAC para Huawei e MikroTik;
 - backup dos triggers e MACs antes de instalar o patch.
+- plano do cliente na listagem e validação do QoS Huawei em Mbps no monitor individual.
+
+O tráfego individual é calculado pelos contadores do `interim-update` RADIUS, sem
+abrir SSH. O SNMP padrão monitora equipamento e interfaces; seus contadores são
+agregados por interface e não devem ser apresentados como consumo de um único login.
 
 ## Instalação
 

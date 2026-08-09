@@ -3,12 +3,14 @@ declare(strict_types=1);
 function huawei_exec(array $c,string $commands):string{
     foreach(['ssh_host','ssh_port','ssh_user','ssh_password']as$k)if(empty($c[$k]))throw new RuntimeException('SSH do Huawei não configurado.');
     $failure=sys_get_temp_dir().'/mkauth-huawei-online-ssh-failure';if(is_file($failure)&&time()-(int)filemtime($failure)<3600)throw new RuntimeException('SSH pausado por segurança após uma falha. Corrija/salve as credenciais ou aguarde 1 hora para evitar bloqueio no Huawei.');
-    $cmd='SSHPASS='.escapeshellarg((string)$c['ssh_password']).' /usr/bin/timeout 12 /usr/bin/sshpass -e /usr/bin/ssh -tt -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -o StrictHostKeyChecking=accept-new -o ConnectTimeout=4 -o LogLevel=ERROR -p '.(int)$c['ssh_port'].' -l '.escapeshellarg((string)$c['ssh_user']).' '.escapeshellarg((string)$c['ssh_host']).' 2>&1';
+    $known=sys_get_temp_dir().'/mkauth-huawei-known-hosts';
+    $cmd='SSHPASS='.escapeshellarg((string)$c['ssh_password']).' /usr/bin/timeout 15 /usr/bin/sshpass -e /usr/bin/ssh -tt -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile='.escapeshellarg($known).' -o ConnectTimeout=5 -o LogLevel=ERROR -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group14-sha1 -p '.(int)$c['ssh_port'].' -l '.escapeshellarg((string)$c['ssh_user']).' '.escapeshellarg((string)$c['ssh_host']).' 2>&1';
     $p=proc_open($cmd,[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);if(!is_resource($p))throw new RuntimeException('Falha ao iniciar SSH.');
     fwrite($pipes[0],"screen-length 0 temporary\n".$commands."\nquit\n");fclose($pipes[0]);$out=stream_get_contents($pipes[1]);fclose($pipes[1]);$out.=stream_get_contents($pipes[2]);fclose($pipes[2]);$code=proc_close($p);
     if(stripos($out,'locked')!==false||stripos($out,'blocked')!==false){@touch($failure);throw new RuntimeException('Usuário ou IP bloqueado temporariamente pelo Huawei.');}
     if(preg_match('/access denied|authentication failed|configured password was not accepted|permission denied/i',$out)){@touch($failure);throw new RuntimeException('Usuário ou senha SSH recusados. As tentativas foram pausadas por 1 hora.');}
     if(preg_match('/connection refused|no route to host|connection timed out|could not resolve/i',$out)){@touch($failure);throw new RuntimeException('IP ou porta SSH inacessível. As tentativas foram pausadas por 1 hora.');}
+    if(preg_match('/no matching (?:host key type|key exchange method|cipher)/i',$out,$m))throw new RuntimeException('Algoritmo SSH incompatível com o Huawei: '.$m[0].'.');
     $executed=preg_match('/<[^>]+>/', $out)===1;if($code!==0&&!$executed)throw new RuntimeException('Falha na comunicação SSH com o Huawei.');
     @unlink($failure);return $out;
 }
