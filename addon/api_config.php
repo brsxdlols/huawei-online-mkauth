@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'nas_ip'=>(string)($c['nas_ip']??''),
         'snmp_host'=>(string)($c['snmp_host']??''),
         'snmp_version'=>(string)($c['snmp_version']??'2c'),
+        'snmp_community'=>(string)($c['snmp_community']??''),
         'snmp_v3_user'=>(string)($c['snmp_v3_user']??''),
         'snmp_v3_level'=>(string)($c['snmp_v3_level']??'authPriv'),
         'snmp_v3_auth_protocol'=>(string)($c['snmp_v3_auth_protocol']??'SHA'),

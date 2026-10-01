@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);require __DIR__.'/bootstrap.php';$user=(string)($_SESSION['MKA_Usuario']??'');$csrf=csrf_token();?>
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Huawei Online</title>
 <style>:root{font-family:Arial;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.bar{height:62px;background:#101827;color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between}.bar-right,.actions,.row-actions{display:flex;align-items:center;gap:10px}.home,.btn,button{border:0;border-radius:8px;padding:10px 14px;text-decoration:none;cursor:pointer;background:#1167d8;color:#fff;font-weight:bold}.gear{font-size:18px;background:#34445d}.danger{background:#bd2732}.secondary{background:#e8eef8;color:#172033}button:disabled{opacity:.6;cursor:wait}main{padding:24px;max-width:1800px;width:calc(100% - 32px);margin:auto}.panel{background:#fff;border-radius:14px;padding:22px;box-shadow:0 4px 18px #16213a18}.subtitle{color:#687386;margin-top:-8px}.actions{flex-wrap:wrap;margin:16px 0}.search{padding:11px;width:320px;border:1px solid #ccd5df;border-radius:8px;margin-left:auto}.feedback{display:none;margin:12px 0;padding:12px 14px;border-radius:8px;font-weight:bold}.feedback.show{display:block}.feedback.info{background:#e8f1ff;color:#1559a6}.feedback.ok{background:#e7f7ed;color:#176c38}.feedback.error{background:#fdebec;color:#a9222d}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e5eaf1;text-align:left;white-space:nowrap}th{background:#edf3fb}.login{font-weight:bold;color:#075daf;text-decoration:none}.login small{margin-left:6px}.muted{color:#687386}.tablewrap{overflow-x:auto}.row-actions .btn,.row-actions button{padding:7px 10px;font-size:12px}.modal{position:fixed;inset:0;background:#0b1325aa;display:none;align-items:center;justify-content:center;padding:24px;z-index:20}.modal.open{display:flex}.modal-card{width:min(900px,96vw);max-height:92vh;background:#fff;border-radius:14px;overflow:auto;box-shadow:0 20px 60px #0008}.modal-card.wide{width:min(1250px,96vw);height:min(820px,92vh);display:flex;flex-direction:column;overflow:hidden}.modal-head{background:#101827;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}.modal-body{padding:20px}.close{background:#bd2732;padding:8px 13px}.modal iframe{border:0;width:100%;flex:1}.test-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.test-card{border:1px solid #dce4ed;border-radius:10px;padding:16px}.test-card.running{background:#fff8df}.test-card.ok{background:#e7f7ed;border-color:#9bd2ad}.test-card.error{background:#fdebec;border-color:#e5a8ad}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field label{display:block;font-weight:bold;margin-bottom:6px}.field input{width:100%;padding:11px;border:1px solid #bdc9d6;border-radius:8px}.full{grid-column:1/-1}.code{white-space:pre-wrap;background:#0c1524;color:#d9e8ff;border-radius:10px;padding:16px;max-height:330px;overflow:auto}.warning{background:#fff4d6;color:#765600;padding:12px;border-radius:8px}@media(max-width:900px){main{width:100%;padding:12px}.test-grid,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.search{width:100%;margin-left:0}.bar-right span{display:none}}</style></head><body>
-<header class="bar"><strong>Huawei Online</strong><div class="bar-right"><span>Usuário: <?=htmlspecialchars($user)?></span><button id="configBtn" class="gear" title="Configurações">⚙ CONFIGURAÇÕES</button><a class="home" href="/admin/addons/dashboard/">INÍCIO</a></div></header>
+<header class="bar"><strong>Huawei Online</strong><div class="bar-right"><span>Usuário: <?=htmlspecialchars($user)?></span><button id="configBtn" class="gear" title="Configurações">⚙ CONFIGURAÇÕES</button><a class="home" href="/admin/addons/dashboard/">← VOLTAR PARA O MK-AUTH</a></div></header>
 <main><section class="panel"><h2><span id="count">–</span> clientes Huawei online</h2><p class="subtitle">RADIUS lista sessões · SNMP verifica o equipamento · SSH coleta tráfego individual e desconecta clientes</p><div class="actions"><button id="wizardBtn">🪄 WIZARD</button><button id="refreshBtn">Atualizar sessões</button><button id="connectBtn">Testar conectividade</button><button id="userBtn" class="secondary">Criar usuário Huawei</button><button id="radiusBtn">Radius LOG</button><input id="filter" class="search" placeholder="Buscar nome, login, IP ou MAC"></div><div id="feedback" class="feedback info" role="status"></div><p id="status" class="muted">Carregando dados do RADIUS…</p><div class="tablewrap"><table><thead><tr><th>Cliente / Login</th><th>IP</th><th>MAC</th><th>Porta</th><th>Último update</th><th>Download</th><th>Upload</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
 
 <div id="connectModal" class="modal"><div class="modal-card"><div class="modal-head"><strong>Teste completo de conectividade</strong><button class="close" data-close="connectModal">FECHAR</button></div><div class="modal-body"><div class="test-grid"><div id="testRadius" class="test-card"><b>RADIUS / banco</b><p>Aguardando teste.</p></div><div id="testSnmp" class="test-card"><b>SNMP Huawei</b><p>Aguardando teste.</p></div><div id="testSsh" class="test-card"><b>RADIUS CoA</b><p>Aguardando teste.</p></div></div><p class="muted">O CoA valida a comunicação administrativa na porta 3799 usando um login de teste inexistente. SSH permanece opcional para o Wizard.</p><button id="runTests">EXECUTAR TODOS OS TESTES</button></div></div></div>
@@ -64,7 +64,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.
  const form=el('configForm'),firstField=form.querySelector('.field');
  const field=document.createElement('div');field.className='field';field.innerHTML='<label>NAS-IP-Address do RADIUS</label><input name="nas_ip" required placeholder="10.31.10.2"><small class="muted">IP enviado pelo Huawei no atributo RADIUS NAS-IP-Address. Não é o IP de gerência.</small>';firstField.before(field);
  const originalLoadConfig=loadConfig;
- loadConfig=async function(first=false){await originalLoadConfig(false);let j=await fetch('api_config.php?_='+Date.now(),{cache:'no-store'}).then(r=>r.json()),c=j.config||{};form.nas_ip.value=c.nas_ip||'';if(first&&(!c.nas_ip||!c.snmp_host||!c.ssh_host||!c.ssh_user||!c.has_snmp_community||!c.has_ssh_password))openModal('configModal')};
+ loadConfig=async function(first=false){await originalLoadConfig(false);let j=await fetch('api_config.php?_='+Date.now(),{cache:'no-store'}).then(r=>r.json()),c=j.config||{};form.nas_ip.value=c.nas_ip||'';form.snmp_community.type='text';form.snmp_community.value=c.snmp_community||'';form.snmp_community.placeholder='Obrigatória';if(first&&(!c.nas_ip||!c.snmp_host||!c.ssh_host||!c.ssh_user||!c.has_snmp_community||!c.has_ssh_password))openModal('configModal')};
  loadConfig(false);
 })();
 </script>
@@ -108,5 +108,38 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.
  button.onclick=()=>openModal('snmpSetupModal');el('snmpSetupClose').onclick=()=>closeModal('snmpSetupModal');
  el('snmpGenerate').onclick=async()=>{let fd=new FormData();fd.append('csrf',csrf);fd.append('version',version.value);fd.append('acl',el('snmpSetupAcl').value);fd.append('source_ip',el('snmpSetupSource').value);fd.append('community',el('snmpSetupCommunity').value);fd.append('v3_user',el('snmpSetupV3User').value);fd.append('v3_auth',el('snmpSetupV3Auth').value);fd.append('v3_priv',el('snmpSetupV3Priv').value);el('snmpCommands').textContent='Identificando a rota e gerando comandos...';try{let r=await fetch('api_snmp_template.php',{method:'POST',body:fd}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'Falha ao gerar comandos.');el('snmpSetupSource').value=j.source_ip;el('snmpCommands').textContent=j.commands;notice(j.message,'ok')}catch(e){el('snmpCommands').textContent='ERRO: '+e.message;notice(e.message,'error')}};
  el('snmpCopy').onclick=async()=>{let text=el('snmpCommands').textContent;if(!text||text.startsWith('ERRO:')||text.startsWith('Preencha'))return notice('Gere os comandos primeiro.','error');await navigator.clipboard.writeText(text);notice('Comandos SNMP copiados.','ok')};
+})();
+</script>
+<style>
+.actions.control-center{display:grid;grid-template-columns:minmax(320px,auto) minmax(420px,1fr);gap:14px;margin:16px 0 12px;align-items:stretch}
+.action-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 12px;border:1px solid #dbe4ef;border-radius:11px;background:#f8faff}
+.action-group.setup{background:#fbfcfe}
+.action-label{width:100%;color:#687386;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1px}
+.action-group button{padding:9px 12px;font-size:12px;white-space:nowrap}
+.filter-bar{display:grid;grid-template-columns:minmax(260px,360px) minmax(260px,360px);justify-content:space-between;gap:14px;margin:0 0 12px}
+.filter-bar select,.filter-bar .search{width:100%;margin:0}
+.bar .home{white-space:nowrap}
+@media(max-width:1150px){.actions.control-center{grid-template-columns:1fr}.filter-bar{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.filter-bar{grid-template-columns:1fr}.action-group button{flex:1}.bar .home{font-size:0}.bar .home:after{content:'← MK-AUTH';font-size:12px}}
+</style>
+<script>
+(function(){
+ const toolbar=document.querySelector('main .panel > .actions');
+ if(!toolbar)return;
+ toolbar.classList.add('control-center');
+ const operation=document.createElement('div');operation.className='action-group operation';operation.innerHTML='<span class="action-label">Operação e diagnóstico</span>';
+ const setup=document.createElement('div');setup.className='action-group setup';setup.innerHTML='<span class="action-label">Configuração e ferramentas</span>';
+ ['refreshBtn','connectBtn','radiusBtn'].forEach(id=>{const node=el(id);if(node)operation.appendChild(node)});
+ ['wizardBtn','snmpSetupBtn','patchAnalyzeBtn','userBtn'].forEach(id=>{const node=el(id);if(node)setup.appendChild(node)});
+ toolbar.append(operation,setup);
+ const filters=document.createElement('div');filters.className='filter-bar';
+ const port=el('portFilter'),search=el('filter');
+ if(port)filters.appendChild(port);
+ if(search)filters.appendChild(search);
+ toolbar.after(filters);
+ const user=el('userBtn');if(user)user.textContent='CRIAR USUÁRIO HUAWEI';
+ const radius=el('radiusBtn');if(radius)radius.textContent='RADIUS LOG';
+ const refresh=el('refreshBtn');if(refresh)refresh.textContent='ATUALIZAR SESSÕES';
+ const connect=el('connectBtn');if(connect)connect.textContent='TESTAR CONECTIVIDADE';
 })();
 </script></body></html>
