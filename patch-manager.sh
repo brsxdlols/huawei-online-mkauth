@@ -7,17 +7,20 @@ MAC_SCRIPT=/root/install-mac-case-patch.sh
 
 sql(){ mysql --defaults-extra-file="$DB_CNF" -N -B mkradius -e "$1"; }
 status(){
-  local mac_insert mac_update mac_conflicts plans_total input_rows output_rows mismatches cron_enabled last_run
+  local mac_insert mac_update mac_conflicts plans_total input_rows output_rows mismatches orphan_rows block_total block_ready cron_enabled last_run
   mac_insert="$(sql "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA='mkradius' AND TRIGGER_NAME='mkauth_preserva_case_mac_insert';")"
   mac_update="$(sql "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA='mkradius' AND TRIGGER_NAME='mkauth_preserva_case_mac_update';")"
   mac_conflicts="$(sql "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA='mkradius' AND EVENT_OBJECT_TABLE='sis_cliente' AND TRIGGER_NAME IN ('sis_cliente_lowercase_mac','sis_cliente_mac_lower_insert','sis_cliente_mac_lower_update');")"
   plans_total="$(sql "SELECT COUNT(*) FROM sis_plano;")"
-  input_rows="$(sql "SELECT COUNT(DISTINCT groupname) FROM radgroupreply WHERE attribute='Huawei-Input-Average-Rate';")"
-  output_rows="$(sql "SELECT COUNT(DISTINCT groupname) FROM radgroupreply WHERE attribute='Huawei-Output-Average-Rate';")"
+  input_rows="$(sql "SELECT COUNT(DISTINCT p.nome) FROM sis_plano p JOIN radgroupreply r ON r.groupname=p.nome WHERE r.attribute='Huawei-Input-Average-Rate';")"
+  output_rows="$(sql "SELECT COUNT(DISTINCT p.nome) FROM sis_plano p JOIN radgroupreply r ON r.groupname=p.nome WHERE r.attribute='Huawei-Output-Average-Rate';")"
   mismatches="$(sql "SELECT COUNT(*) FROM sis_plano p LEFT JOIN radgroupreply i ON i.groupname=p.nome AND i.attribute='Huawei-Input-Average-Rate' LEFT JOIN radgroupreply o ON o.groupname=p.nome AND o.attribute='Huawei-Output-Average-Rate' WHERE i.id IS NULL OR o.id IS NULL OR i.op<>'=' OR o.op<>'=' OR CAST(i.value AS UNSIGNED)<>CAST(COALESCE(NULLIF(p.velup,''),'0') AS UNSIGNED)*1000 OR CAST(o.value AS UNSIGNED)<>CAST(COALESCE(NULLIF(p.veldown,''),'0') AS UNSIGNED)*1000;")"
+  orphan_rows="$(sql "SELECT COUNT(*) FROM radgroupreply r LEFT JOIN sis_plano p ON p.nome=r.groupname WHERE r.attribute IN ('Huawei-Input-Average-Rate','Huawei-Output-Average-Rate') AND (TRIM(r.groupname)='' OR p.nome IS NULL);")"
+  block_total="$(sql "SELECT COUNT(DISTINCT username) FROM radreply WHERE attribute='Framed-Pool' AND value='pgcorte';")"
+  block_ready="$(sql "SELECT COUNT(*) FROM (SELECT p.username FROM radreply p JOIN radreply w ON w.username=p.username AND w.attribute='Framed-IPv6-Pool' AND w.value='bloqueiov6prefix' JOIN radreply d ON d.username=p.username AND d.attribute='Huawei-Delegated-IPv6-Prefix-Pool' AND d.value='pgcorte' WHERE p.attribute='Framed-Pool' AND p.value='pgcorte' GROUP BY p.username) x;")"
   cron_enabled=0; [ -f "$CRON_FILE" ] && grep -qF '/root/planos/att-planos-huawei.sh' "$CRON_FILE" && cron_enabled=1
-  last_run='nunca'; [ -f /var/log/mkauth-huawei-planos.log ] && last_run="$(date -r /var/log/mkauth-huawei-planos.log '+%Y-%m-%d %H:%M:%S')"
-  printf '%s\n' "MAC_INSERT=$mac_insert" "MAC_UPDATE=$mac_update" "MAC_CONFLICTS=$mac_conflicts" "PLANS_TOTAL=$plans_total" "PLAN_INPUT=$input_rows" "PLAN_OUTPUT=$output_rows" "PLAN_MISMATCHES=$mismatches" "CRON_ENABLED=$cron_enabled" "LAST_RUN=$last_run"
+  last_run='nunca'; [ -f /var/run/mkauth-huawei-planos.last ] && last_run="$(date -r /var/run/mkauth-huawei-planos.last '+%Y-%m-%d %H:%M:%S')"
+  printf '%s\n' "MAC_INSERT=$mac_insert" "MAC_UPDATE=$mac_update" "MAC_CONFLICTS=$mac_conflicts" "PLANS_TOTAL=$plans_total" "PLAN_INPUT=$input_rows" "PLAN_OUTPUT=$output_rows" "PLAN_MISMATCHES=$mismatches" "PLAN_ORPHANS=$orphan_rows" "BLOCK_IPV6_TOTAL=$block_total" "BLOCK_IPV6_READY=$block_ready" "CRON_ENABLED=$cron_enabled" "LAST_RUN=$last_run"
 }
 
 apply(){
@@ -28,6 +31,9 @@ apply(){
     backup="/root/planos/backup-radgroupreply-huawei-$(date +%Y%m%d-%H%M%S).sql"
     mysqldump --defaults-extra-file="$DB_CNF" mkradius radgroupreply --where="attribute IN ('Huawei-Input-Average-Rate','Huawei-Output-Average-Rate')" >"$backup"
     chmod 0600 "$backup"
+    backup_reply="/root/planos/backup-radreply-huawei-ipv6-$(date +%Y%m%d-%H%M%S).sql"
+    mysqldump --defaults-extra-file="$DB_CNF" mkradius radreply --where="attribute IN ('Framed-Pool','Mikrotik-Delegated-IPv6-Pool','Framed-IPv6-Pool','Huawei-Delegated-IPv6-Prefix-Pool')" >"$backup_reply"
+    chmod 0600 "$backup_reply"
   fi
   "$PLAN_SCRIPT"
   cat >"$CRON_FILE" <<'CRON'

@@ -21,7 +21,7 @@ fi
 install -d -o root -g www-data -m 0750 "$DEST"
 install -d -o root -g www-data -m 0770 "$DEST/data" "$CONF" "$CACHE"
 install -d -o root -g root -m 0700 "$PLANOS"
-files=(index.php detail.php bootstrap.php huawei_client.php snmp_client.php coa_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_interfaces.php api_ssh_health.php api_coa_health.php api_config.php api_wizard.php api_disconnect.php api_patch.php api_snmp_template.php manifest.json)
+files=(index.php detail.php bootstrap.php huawei_client.php snmp_client.php ipv6_client.php coa_client.php api_sessions.php api_client.php api_realtime.php api_health.php api_interfaces.php api_ssh_health.php api_coa_health.php api_config.php api_wizard.php api_disconnect.php api_patch.php api_snmp_template.php manifest.json)
 for f in "${files[@]}"; do curl -fsSL "$REPO/addon/$f" -o "$DEST/$f"; done
 cat >"$DEST/data/.htaccess" <<'HTACCESS'
 <IfModule mod_authz_core.c>
@@ -72,6 +72,31 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 * * * * * root /usr/local/sbin/mkauth-huawei-patch-manager process >/dev/null 2>&1
 CRON
 chmod 0644 /etc/cron.d/mkauth-huawei-patch-worker
+install -d -o root -g root -m 0750 /opt/mk-auth/scripts
+curl -fsSL "$REPO/scripts/mkauth_huawei_block_worker.php" -o /opt/mk-auth/scripts/mkauth_huawei_block_worker.php
+chmod 0750 /opt/mk-auth/scripts/mkauth_huawei_block_worker.php
+mysql --defaults-extra-file="$CONF/db.cnf" mkradius <<'SQL'
+CREATE TABLE IF NOT EXISTS mkauth_huawei_block_queue (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ login VARCHAR(128) NOT NULL, desired_state VARCHAR(8) NOT NULL,
+ status VARCHAR(16) NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0,
+ created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
+ processed_at DATETIME NULL, result_message VARCHAR(255) NULL,
+ UNIQUE KEY uq_login(login), KEY idx_status(status,attempts)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mkauth_huawei_block_state (
+ login VARCHAR(128) NOT NULL PRIMARY KEY,
+ blocked_state VARCHAR(8) NOT NULL, updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO mkauth_huawei_block_state(login,blocked_state,updated_at)
+SELECT login,bloqueado,NOW() FROM sis_cliente WHERE TRIM(COALESCE(login,''))<>''
+ON DUPLICATE KEY UPDATE blocked_state=VALUES(blocked_state),updated_at=VALUES(updated_at);
+SQL
+cat >/etc/cron.d/mkauth-huawei-block <<'CRON'
+* * * * * root /usr/bin/php /opt/mk-auth/scripts/mkauth_huawei_block_worker.php >/dev/null 2>&1
+CRON
+chmod 0644 /etc/cron.d/mkauth-huawei-block
+php -l /opt/mk-auth/scripts/mkauth_huawei_block_worker.php
 rm -f /etc/sudoers.d/mkauth-huawei-patch-manager
 echo "Addon instalado sem credenciais e sem aplicar patches no banco."
 echo "Abra http://IP-DO-MKAUTH/admin/addons/huawei_online/, execute o WIZARD e depois use Analisar PATCH."
